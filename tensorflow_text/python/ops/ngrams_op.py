@@ -25,8 +25,6 @@ from tensorflow.python.framework import errors
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import string_ops
-from tensorflow.python.ops.ragged import ragged_functional_ops
-from tensorflow.python.ops.ragged import ragged_tensor
 from tensorflow_text.python.ops.sliding_window_op import sliding_window
 
 
@@ -72,7 +70,6 @@ def ngrams(data,
       * `Reduction.SUM`: Add values in the window.
       * `Reduction.MEAN`: Average values in the window.
       * `Reduction.STRING_JOIN`: Join strings in the window.
-        Note that axis must be -1 here.
 
     string_separator: The separator string used for `Reduction.STRING_JOIN`.
       Ignored otherwise. Must be a string constant, not a Tensor.
@@ -95,12 +92,6 @@ def ngrams(data,
       raise errors.InvalidArgumentError(None, None,
                                         "reduction_type must be a Reduction.")
 
-    # TODO(b/122967921): Lift this restriction after ragged_reduce_join is done.
-    if reduction_type is Reduction.STRING_JOIN and axis != -1:
-      raise errors.InvalidArgumentError(
-          None, None, "%s requires that ngrams' 'axis' parameter be -1." %
-          Reduction.STRING_JOIN.name)
-
     windowed_data = sliding_window(data, width, axis)
 
     if axis < 0:
@@ -115,12 +106,5 @@ def ngrams(data,
     elif reduction_type is Reduction.MEAN:
       return math_ops.reduce_mean(windowed_data, reduction_axis)
     elif reduction_type is Reduction.STRING_JOIN:
-      if isinstance(data, ragged_tensor.RaggedTensor):
-        return ragged_functional_ops.map_flat_values(
-            string_ops.reduce_join,
-            windowed_data,
-            axis=axis,
-            separator=string_separator)
-      else:
-        return string_ops.reduce_join(
-            windowed_data, axis=axis, separator=string_separator)
+      return string_ops.reduce_join(
+          windowed_data, axis=axis, separator=string_separator)
